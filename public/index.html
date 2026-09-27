@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QVAC Local Receipt Reader</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- =========================
+       HEADER
+  ========================== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        Q
+      </div>
+      <div class="brand-text">
+        <h1>QVAC Local Receipt Reader</h1>
+        <p>Local AI-powered receipt processing</p>
+      </div>
+    </div>
+    <div class="local-badge">
+      <span class="status-dot"></span>
+      Local Processing
+    </div>
+  </header>
+  <!-- =========================
+       MAIN CONTENT
+  ========================== -->
+  <main class="container">
+    <div class="page-heading">
+      <h2>Receipt Processing</h2>
+      <p>
+        Extract important receipt information securely using
+        QVAC local OCR.
+      </p>
+    </div>
+    <!-- =========================
+         UPLOAD CARD
+    ========================== -->
+    <section class="upload-card">
+      <div class="section-title">
+        <div class="section-number">
+          01
+        </div>
+        <div>
+          <h3>Upload Receipt</h3>
+        </div>
+      </div>
+      <div class="upload-area">
+        <div class="upload-icon">
+          ▣
+        </div>
+        <h4>Select a receipt image</h4>
+        <p>
+          JPG, JPEG, PNG — maximum file size 10 MB
+        </p>
+        <label for="receipt" class="choose-btn">
+          Choose Receipt
+        </label>
+        <input
+          id="receipt"
+          class="file-input"
+          type="file"
+          accept="image/*"
+        />
+        <div id="fileName" class="file-name">
+          No file selected
+        </div>
+      </div>
+      <button
+        id="readBtn"
+        class="read-btn"
+        type="button"
+      >
+        Read Receipt with QVAC OCR
+      </button>
+    </section>
+    <!-- =========================
+         STATUS
+    ========================== -->
+    <div id="status" class="status"></div>
+    <!-- =========================
+         RESULTS
+    ========================== -->
+    <section id="results" class="results">
+      <div class="results-card">
+        <div class="results-header">
+          <div class="results-title">
+            <div class="results-title-icon">
+              ✓
+            </div>
+            <div>
+              <h3>Extracted Receipt Information</h3>
+              <p>
+                Information detected from the uploaded receipt
+              </p>
+            </div>
+          </div>
+          <div class="success-badge">
+            OCR COMPLETED
+          </div>
+        </div>
+        <!-- =========================
+             DETAILS TABLE
+        ========================== -->
+        <div class="table-wrapper">
+          <table class="details-table">
+            <tbody>
+              <tr>
+                <td>Receipt Type</td>
+                <td id="receiptTitle"></td>
+              </tr>
+              <tr>
+                <td>Date</td>
+                <td id="date"></td>
+              </tr>
+              <tr>
+                <td>Receipt Number</td>
+                <td id="receiptNumber"></td>
+              </tr>
+              <tr>
+                <td>Received From</td>
+                <td id="receivedFrom"></td>
+              </tr>
+              <tr>
+                <td>Payment For</td>
+                <td id="paymentFor"></td>
+              </tr>
+              <tr>
+                <td>Particulars</td>
+                <td id="particulars"></td>
+              </tr>
+              <tr>
+                <td>Amount</td>
+                <td id="amount"></td>
+              </tr>
+              <tr>
+                <td>Total Amount</td>
+                <td id="total"></td>
+              </tr>
+              <tr>
+                <td>Cashier</td>
+                <td id="cashier"></td>
+              </tr>
+              <tr>
+                <td>Check Date</td>
+                <td id="checkDate"></td>
+              </tr>
+              <tr>
+                <td>TIN</td>
+                <td id="tin"></td>
+              </tr>
+              <tr>
+                <td>Address</td>
+                <td id="storeAddress"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- =========================
+             RAW OCR OUTPUT
+        ========================== -->
+        <div class="raw-section">
+          <details>
+            <summary>
+              View Original QVAC OCR Output
+            </summary>
+            <div
+              id="rawOutput"
+              class="raw-output"
+            ></div>
+          </details>
+        </div>
+      </div>
+    </section>
+    <!-- =========================
+         FOOTER
+    ========================== -->
+    <footer>
+      <strong>QVAC Local Receipt Reader</strong>
+      <br />
+      Powered by local QVAC OCR · No cloud upload required
+    </footer>
+  </main>
+  <!-- =========================
+       JAVASCRIPT
+  ========================== -->
+  <script>
+    const fileInput =
+      document.getElementById("receipt");
+    const fileName =
+      document.getElementById("fileName");
+    const readBtn =
+      document.getElementById("readBtn");
+    const status =
+      document.getElementById("status");
+    const results =
+      document.getElementById("results");
+    /*
+      Display selected filename
+    */
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        fileName.textContent =
+          "No file selected";
+        return;
+      }
+      fileName.textContent =
+        file.name;
+    });
+    /*
+      Display extracted values safely
+    */
+    function setField(id, value) {
+      const element =
+        document.getElementById(id);
+      if (!element) {
+        return;
+      }
+      const text =
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ""
+          ? String(value)
+          : "Not detected";
+      element.textContent = text;
+      element.classList.toggle(
+        "not-detected",
+        text === "Not detected"
+      );
+    }
+    /*
+      Set status message
+    */
+    function showStatus(message, type) {
+      status.textContent =
+        message;
+      status.className =
+        "status " + type;
+    }
+    /*
+      Read receipt
+    */
+    readBtn.addEventListener(
+      "click",
+      async () => {
+        const file =
+          fileInput.files[0];
+        /*
+          Check file
+        */
+        if (!file) {
+          showStatus(
+            "Please choose a receipt image first.",
+            "error"
+          );
+          return;
+        }
+        /*
+          Validate file size
+        */
+        if (
+          file.size >
+          10 * 1024 * 1024
+        ) {
+          showStatus(
+            "File is too large. Maximum size is 10 MB.",
+            "error"
+          );
+          return;
+        }
+        /*
+          Reset previous results
+        */
+        results.style.display =
+          "none";
+        readBtn.disabled =
+          true;
+        readBtn.textContent =
+          "Processing Receipt...";
+        showStatus(
+          "QVAC is processing the receipt locally. Please wait...",
+          "loading"
+        );
+        try {
+          /*
+            Create multipart form data
+          */
+          const formData =
+            new FormData();
+          formData.append(
+            "receipt",
+            file
+          );
+          /*
+            Send image to local OCR API
+          */
+          const response =
+            await fetch(
+              "/api/ocr",
+              {
+                method: "POST",
+                body: formData
+              }
+            );
+          const data =
+            await response.json();
+          /*
+            Handle server errors
+          */
+          if (
+            !response.ok ||
+            !data.success
+          ) {
+            throw new Error(
+              data.error ||
+              "OCR processing failed."
+            );
+          }
+          /*
+            Get extracted details
+          */
+          const details =
+            data.details || {};
+          /*
+            Display extracted information
+          */
+          setField(
+            "receiptTitle",
+            details.receiptTitle
+          );
+          setField(
+            "date",
+            details.date
+          );
+          setField(
+            "receiptNumber",
+            details.receiptNumber
+          );
+          setField(
+            "receivedFrom",
+            details.receivedFrom
+          );
+          setField(
+            "paymentFor",
+            details.paymentFor
+          );
+          setField(
+            "particulars",
+            details.particulars
+          );
+          setField(
+            "amount",
+            details.amount
+          );
+          setField(
+            "total",
+            details.total
+          );
+          setField(
+            "cashier",
+            details.cashier
+          );
+          setField(
+            "checkDate",
+            details.checkDate
+          );
+          setField(
+            "tin",
+            details.tin
+          );
+          setField(
+            "storeAddress",
+            details.storeAddress
+          );
+          /*
+            Display original QVAC OCR output
+          */
+          document.getElementById(
+            "rawOutput"
+          ).textContent =
+            data.text ||
+            "No OCR text available.";
+          /*
+            Show success message
+          */
+          showStatus(
+            "OCR completed successfully. Receipt information has been extracted using local QVAC OCR.",
+            "success"
+          );
+          /*
+            Display results
+          */
+          results.style.display =
+            "block";
+          /*
+            Smooth scroll to results
+          */
+          setTimeout(() => {
+            results.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+          }, 100);
+        } catch (error) {
+          console.error(error);
+          showStatus(
+            error.message ||
+            "An error occurred while processing the receipt.",
+            "error"
+          );
+        } finally {
+          readBtn.disabled =
+            false;
+          readBtn.textContent =
+            "Read Receipt with QVAC OCR";
+        }
+      }
+    );
+  </script>
+</body>
+</html>
